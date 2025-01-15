@@ -17,3 +17,4 @@ deleted_folder=deleted
 11,Nerpa bajkalska,a
 12,Foka Weddela,s
 13,Lodofoka grenlandzka,d
+14,Foka plamista,f
