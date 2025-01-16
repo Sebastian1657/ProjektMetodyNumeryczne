@@ -79,7 +79,8 @@ class ImageLabelingApp:
                     self.colors[category_id] = available_colors[color_index % len(available_colors)]
                     color_index += 1
 
-        os.makedirs(self.output_folder, exist_ok=True)
+        os.makedirs(self.output_folder+"/images", exist_ok=True)
+        os.makedirs(self.output_folder+"/labels", exist_ok=True)
         os.makedirs(self.deleted_folder, exist_ok=True)
 
     def load_image(self, image_path):
@@ -171,7 +172,7 @@ class ImageLabelingApp:
     def save_labels(self):
         """Zapisanie etykiet do pliku txt"""
         image_name = os.path.basename(self.image_paths[self.current_image_idx])
-        label_file = os.path.join(self.output_folder, image_name.replace('.jpg', '.txt').replace('.png', '.txt').replace('.jpeg', '.txt'))
+        label_file = os.path.join(self.output_folder+"/labels", image_name.replace('.jpg', '.txt').replace('.png', '.txt').replace('.jpeg', '.txt'))
         with open(label_file, 'w') as f:
             for label in self.rectangles:
                 f.write(f"{label[0]} {label[1]} {label[2]} {label[3]} {label[4]}\n")
@@ -179,7 +180,7 @@ class ImageLabelingApp:
     def move_image(self):
         """Przeniesienie zetykietowanego obrazu do folderów"""
         image_name = os.path.basename(self.image_paths[self.current_image_idx])
-        shutil.copy(self.image_paths[self.current_image_idx], os.path.join(self.output_folder, image_name))
+        shutil.copy(self.image_paths[self.current_image_idx], os.path.join(self.output_folder+"/images", image_name))
         shutil.move(self.image_paths[self.current_image_idx], os.path.join(self.deleted_folder, image_name))
 
     def open_encyclopedia(self):
