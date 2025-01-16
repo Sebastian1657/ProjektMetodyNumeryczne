@@ -62,7 +62,7 @@ class EncyclopediaViewer:
         self.image_canvas.delete("all")
         try:
             image = Image.open(image_path)
-            image.thumbnail((500, 500))
+            image.thumbnail((700, 700))
             self.current_image = ImageTk.PhotoImage(image)
             self.image_canvas.create_image(0, 0, anchor=tk.NW, image=self.current_image)
         except Exception as e:
