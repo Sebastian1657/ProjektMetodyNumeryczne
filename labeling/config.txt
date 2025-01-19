@@ -17,4 +17,4 @@ deleted_folder=labeling\deleted
 11,Nerpa bajkalska,a
 12,Weddelka,s
 13,Foka plamista,d
-14, Kajgulik pregowany,f
+14,Kajgulik pregowany,f

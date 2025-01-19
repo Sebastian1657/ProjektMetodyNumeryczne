@@ -10,6 +10,7 @@ from albumentations.pytorch import ToTensorV2
 import cv2 
 
 import os 
+import re
 import numpy as np 
 import pandas as pd 
 
@@ -154,11 +155,11 @@ def convert_cells_to_bboxes(predictions, anchors, s, is_predictions=True):
 def plot_image(image, boxes): 
 	# Getting the color map from matplotlib 
 	colour_map = plt.get_cmap("tab20b") 
-	# Getting 20 different colors from the color map for 20 different classes 
+	# Getting 14 different colors from the color map for 14 different classes 
 	colors = [colour_map(i) for i in np.linspace(0, 1, len(class_labels))] 
 
 	# Reading the image with OpenCV 
-	img = np.array(image) 
+	img = np.asarray(image) 
 	# Getting the height and width of the image 
 	h, w, _ = img.shape 
 
@@ -171,7 +172,7 @@ def plot_image(image, boxes):
 	# Plotting the bounding boxes and labels over the image 
 	for box in boxes: 
 		# Get the class from the box 
-		class_pred = box[0] 
+		class_pred = box[0]
 		# Get the center x and y coordinates 
 		box = box[2:] 
 		# Get the upper left corner coordinates 
@@ -202,17 +203,16 @@ def plot_image(image, boxes):
 		) 
 	# Display the plot 
 	plt.show()
+
 # Create a dataset class to load the images and labels from the folder 
 class Dataset(torch.utils.data.Dataset): 
 	def __init__( 
-		self, csv_file, image_dir, label_dir, anchors, 
+		self, image_dir, label_dir, anchors, 
 		image_size=416, grid_sizes=[13, 26, 52], 
 		num_classes=20, transform=None
 	): 
-		# Read the csv file with image names and labels 
-		self.label_list = pd.read_csv(csv_file) 
 		# Image and label directories 
-		self.image_dir = image_dir 
+		self.image_dir = image_dir
 		self.label_dir = label_dir 
 		# Image size 
 		self.image_size = image_size 
@@ -233,20 +233,31 @@ class Dataset(torch.utils.data.Dataset):
 		self.ignore_iou_thresh = 0.5
 
 	def __len__(self): 
-		return len(self.label_list) 
+		""" files = [f for f in os.listdir(self.image_dir)]
+		files = int(str(files[-1]).replace('IMG_foka', '').replace('.jpg', ''))
+		return files """
+		return len(self.label_dir)
 	
-	def __getitem__(self, idx): 
-		# Getting the label path 
-		label_path = os.path.join(self.label_dir, self.label_list.iloc[idx, 1]) 
+	def __getitem__(self, idx):
+		imageNumberOf = 10000
+		while True:
+			index = str(imageNumberOf+idx)
+			file_name = "IMG_foka"+index.replace(index[0],"",1)
+			label_path = os.path.join(self.label_dir, file_name+".txt")
+			img_path = os.path.join(self.image_dir, file_name+".jpg")
+			if os.path.exists(label_path):
+				break
+			idx += 1
+		print(label_path)
+		print(img_path)
 		# We are applying roll to move class label to the last column 
 		# 5 columns: x, y, width, height, class_label 
 		bboxes = np.roll(np.loadtxt(fname=label_path, 
-						delimiter=" ", ndmin=2), 4, axis=1).tolist() 
+						delimiter=" ", ndmin=2), 4, axis=1).tolist()
 		
 		# Getting the image path 
-		img_path = os.path.join(self.image_dir, self.label_list.iloc[idx, 0]) 
 		image = np.array(Image.open(img_path).convert("RGB")) 
-
+        
 		# Albumentations augmentations 
 		if self.transform: 
 			augs = self.transform(image=image, bboxes=bboxes) 
@@ -306,7 +317,8 @@ class Dataset(torch.utils.data.Dataset):
 					targets[scale_idx][anchor_on_scale, i, j, 1:5] = box_coordinates 
 
 					# Assigning the class label to the target 
-					targets[scale_idx][anchor_on_scale, i, j, 5] = int(class_label) 
+					targets[scale_idx][anchor_on_scale, i, j, 5] = int(class_label) #important
+					print(class_label)
 
 					# Set the anchor box as assigned for the scale 
 					has_anchor[scale_idx] = True
@@ -337,7 +349,6 @@ ANCHORS = [
 	[(0.07, 0.15), (0.15, 0.11), (0.14, 0.29)], 
 	[(0.02, 0.03), (0.04, 0.07), (0.08, 0.06)], 
 ] 
-
 # Batch size for training 
 batch_size = 32
 
@@ -354,7 +365,8 @@ image_size = 416
 s = [image_size // 32, image_size // 16, image_size // 8] 
 
 # Class labels 
-class_labels = [ 
+class_labels = [
+	"XD",
 	"Foka pospolita",
     "Nerpa obraczkowana",
     "Foka szara",
@@ -370,5 +382,100 @@ class_labels = [
     "Foka plamista",
     "Kajgulik pregowany"
 ]
+# Transform for training 
+train_transform = A.Compose( 
+	[ 
+		# Rescale an image so that maximum side is equal to image_size 
+		A.LongestMaxSize(max_size=image_size), 
+		# Pad remaining areas with zeros 
+		A.PadIfNeeded( 
+			min_height=image_size, min_width=image_size, border_mode=cv2.BORDER_CONSTANT 
+		), 
+		# Random color jittering 
+		A.ColorJitter( 
+			brightness=0.5, contrast=0.5, 
+			saturation=0.5, hue=0.5, p=0.5
+		), 
+		# Flip the image horizontally 
+		A.HorizontalFlip(p=0.5), 
+		# Normalize the image 
+		A.Normalize( 
+			mean=[0, 0, 0], std=[1, 1, 1], max_pixel_value=255
+		), 
+		# Convert the image to PyTorch tensor 
+		ToTensorV2() 
+	], 
+	# Augmentation for bounding boxes 
+	bbox_params=A.BboxParams( 
+					format="yolo", 
+					min_visibility=0.4, 
+					label_fields=[] 
+				) 
+) 
+
+# Transform for testing 
+test_transform = A.Compose( 
+	[ 
+		# Rescale an image so that maximum side is equal to image_size 
+		A.LongestMaxSize(max_size=image_size), 
+		# Pad remaining areas with zeros 
+		A.PadIfNeeded( 
+			min_height=image_size, min_width=image_size, border_mode=cv2.BORDER_CONSTANT 
+		), 
+		# Normalize the image 
+		A.Normalize( 
+			mean=[0, 0, 0], std=[1, 1, 1], max_pixel_value=255
+		), 
+		# Convert the image to PyTorch tensor 
+		ToTensorV2() 
+	], 
+	# Augmentation for bounding boxes 
+	bbox_params=A.BboxParams( 
+					format="yolo", 
+					min_visibility=0.4, 
+					label_fields=[] 
+				) 
+)
+# Creating a dataset object 
+dataset = Dataset( 
+	image_dir="labeling/output/images/", 
+	label_dir="labeling/output/labels/",
+	grid_sizes=[13, 26, 52], 
+	anchors=ANCHORS, 
+	transform=test_transform 
+) 
+
+# Creating a dataloader object 
+loader = torch.utils.data.DataLoader( 
+	dataset=dataset, 
+	batch_size=1, 
+	shuffle=True, 
+) 
+
+# Defining the grid size and the scaled anchors 
+GRID_SIZE = [13, 26, 52] 
+scaled_anchors = torch.tensor(ANCHORS) / ( 
+	1 / torch.tensor(GRID_SIZE).unsqueeze(1).unsqueeze(1).repeat(1, 3, 2) 
+) 
+
+# Getting a batch from the dataloader 
+x, y = next(iter(loader)) 
+
+# Getting the boxes coordinates from the labels 
+# and converting them into bounding boxes without scaling 
+boxes = [] 
+for i in range(y[0].shape[1]): 
+	anchor = scaled_anchors[i] 
+	boxes += convert_cells_to_bboxes( 
+			y[i], is_predictions=False, s=y[i].shape[2], anchors=anchor 
+			)[0] 
+
+# Applying non-maximum suppression 
+boxes = nms(boxes, iou_threshold=1, threshold=0.7) 
+
+# Plotting the image with the bounding boxes 
+plot_image(x[0].permute(1,2,0).to("cpu"), boxes)
+
+
 
 
