@@ -4,17 +4,17 @@ output_folder=labeling\output
 deleted_folder=labeling\deleted
 
 # Kategorie (numer, nazwa, skrót klawiszowy)
-1,Foka pospolita,q
-2,Nerpa obraczkowana,w
-3,Foka szara,e
-4,Amfiryta lamparcia,r
-5,Fokowas brodaty,t
-6,Kapturnik morski,y
-7,Krabojad foczy,u
-8,Lodofoka grenlandzka,i
-9,Mirunga,o
-10,Mniszka,p
-11,Nerpa bajkalska,a
-12,Weddelka,s
-13,Foka plamista,d
-14,Kajgulik pregowany,f
+0,Foka pospolita,q
+1,Nerpa obraczkowana,w
+2,Foka szara,e
+3,Amfiryta lamparcia,r
+4,Fokowas brodaty,t
+5,Kapturnik morski,y
+6,Krabojad foczy,u
+7,Lodofoka grenlandzka,i
+8,Mirunga,o
+9,Mniszka,p
+10,Nerpa bajkalska,a
+11,Weddelka,s
+12,Foka plamista,d
+13,Kajgulik pregowany,f
